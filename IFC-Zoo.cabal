@@ -1,0 +1,54 @@
+cabal-version:      3.4
+name:               IFC-Zoo
+version:            0.1.0.0
+-- synopsis:
+-- description:
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             Julius Marozas, Erik Nilsson, Nahusenay Yifter
+maintainer:         marozas.julius@gmail.com
+-- copyright:
+category:           Language
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+-- extra-source-files:
+
+common common
+    ghc-options: -Wall
+    build-depends:    base ^>=4.17.0.0
+    default-language: GHC2021
+    default-extensions:
+        LambdaCase
+
+library
+    import:           common
+    hs-source-dirs:   src
+    exposed-modules:
+        Language.While.Abstract
+        Language.While.Abstract.Command
+        Language.While.Abstract.Expr
+        Language.While.Abstract.Name
+        Language.While.Parser
+        Language.While.Render
+        Language.While.Eval.BigStep
+    build-depends:
+        bytestring,
+        text,
+        prettyprinter,
+        containers,
+        transformers,
+        mtl
+
+executable IFC-Zoo
+    import:           common
+    main-is:          Main.hs
+    other-modules:
+        Examples
+    default-extensions:
+        NoMonomorphismRestriction
+    hs-source-dirs:   app
+    build-depends:
+        IFC-Zoo,
+        bytestring,
+        text,
+        prettyprinter
