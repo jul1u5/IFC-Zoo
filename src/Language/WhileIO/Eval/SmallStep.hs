@@ -48,6 +48,6 @@ instance While a => While (Eval a) where
     v <- evalExpr env e
     return $ Term $ Env $ Map.insert n v $ vars env
 
-instance WhileIO a => WhileIO (Eval a) where
-  in_ l n = _
-  out_ l n e = _
+-- instance WhileIO a => WhileIO (Eval a) where
+--   in_ l n = _
+--   out_ l n e = _
