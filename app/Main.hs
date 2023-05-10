@@ -4,13 +4,15 @@ module Main where
 
 import System.IO qualified as System
 
+import Data.Bool (bool)
 import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
 
 import Prettyprinter
 import Prettyprinter.Render.Text (renderIO)
 
-import Language.While.Eval.BigStep (runEval)
+import Language.While.Eval.BigStep qualified as BigStep
+import Language.While.Eval.SmallStep qualified as SmallStep
 import Language.While.Render (renderStm)
 
 import Examples
@@ -19,13 +21,25 @@ main :: IO ()
 main = do
   let prog = implicitFlow
 
-  labeled "Program" $ do
+  heading "Program" $ do
     putDocLn $ renderStm prog
 
-  labeled "Evaluation" $ do
-    putDocLn $ case runEval prog of
-      Left err -> "ERROR:" <+> pretty err
-      Right env -> pretty env
+  let bigStepEnv = BigStep.runEval prog
+      smallStepEnv = SmallStep.runEval prog
+
+  heading "Evaluation" $ do
+    subheading "Big-step" $ do
+      putDocLn $ case bigStepEnv of
+        Left err -> "ERROR:" <+> pretty err
+        Right env -> pretty env
+
+    subheading "Small-step" $ do
+      putDocLn $ case smallStepEnv of
+        Left err -> "ERROR:" <+> pretty err
+        Right env -> pretty env
+
+    subheading "The same?" $ do
+      putDocLn $ bool "No 🤨" "Yes 😇" $ bigStepEnv == smallStepEnv
 
 putDocLn :: Doc ann -> IO ()
 putDocLn =
@@ -33,8 +47,13 @@ putDocLn =
     . layoutSmart defaultLayoutOptions
     . (<> line)
 
-labeled :: T.Text -> IO () -> IO ()
-labeled heading action = do
-  let len = T.length heading
-  TIO.putStrLn $ "\n# " <> heading <> " " <> T.replicate (80 - len) "#"
+heading :: T.Text -> IO () -> IO ()
+heading title action = do
+  let len = T.length title
+  TIO.putStrLn $ "\n# " <> title <> " " <> T.replicate (80 - len) "#"
+  action
+
+subheading :: T.Text -> IO () -> IO ()
+subheading title action = do
+  TIO.putStrLn $ "\n## " <> title
   action

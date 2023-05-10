@@ -6,6 +6,6 @@ import Language.While.Abstract
 
 data Level = Low | High
 
-class WhileIO s where
-  in_ :: Level -> Name -> s
-  out_ :: Level -> Name -> s -> s
+class WhileIO c where
+  in_ :: Level -> Name -> c
+  out_ :: Level -> Name -> c -> c

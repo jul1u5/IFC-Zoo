@@ -22,27 +22,27 @@ type instance WhileExpr RenderStm = RenderExpr
 instance While RenderStm where
   skip_ = RenderStm{renderStm = "skip" <> ";", isSkip = True}
 
-  semicolon s1 s2 = mkRender $ renderStm s1 <> P.line <> renderStm s2
+  semicolon c1 c2 = mkRender $ renderStm c1 <> P.line <> renderStm c2
 
-  if_ e (Then s1) (Else s2) =
+  if_ e (Then c1) (Else c2) =
     mkRender $
       P.sep $
         [ "if" <+> renderExpr e <+> "then"
-        , indent <> renderStm s1
+        , indent <> renderStm c1
         ]
-          <> ( if isSkip s2
+          <> ( if isSkip c2
                 then []
                 else
                   [ "else"
-                  , indent <> renderStm s2
+                  , indent <> renderStm c2
                   ]
              )
 
-  while_ e s =
+  while_ e c =
     mkRender $
       P.sep
         [ "while" <+> renderExpr e <+> "do"
-        , indent <> renderStm s
+        , indent <> renderStm c
         , "done"
         ]
 

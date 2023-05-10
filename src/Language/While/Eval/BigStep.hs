@@ -12,40 +12,42 @@ import Language.While.Abstract
 import Language.While.Eval.Context
 import Language.While.Eval.Expr qualified as Expr
 
-newtype Eval = Eval {eval :: StateT Env (Except EvalError) ()}
+type M = StateT Env (Except EvalError)
+
+newtype Eval = Eval {eval :: M ()}
 
 runEval :: Eval -> Either EvalError Env
 runEval = runExcept . flip execStateT (Env Map.empty) . eval
 
-type instance WhileExpr Eval = Expr.Eval
-
-evalExpr :: Expr.Eval -> StateT Env (Except EvalError) Value
+evalExpr :: Expr.Eval -> M Value
 evalExpr e = do
   env <- get
   lift $ runReaderT (Expr.eval e) env
 
+type instance WhileExpr Eval = Expr.Eval
+
 instance While Eval where
-  skip_ = Eval $ pure ()
+  skip_ = Eval $ return ()
 
-  semicolon s1 s2 = Eval $ do
-    eval s1
-    eval s2
+  semicolon c1 c2 = Eval $ do
+    eval c1
+    eval c2
 
-  if_ cond (Then s1) (Else s2) =
+  if_ cond (Then c1) (Else c2) =
     Eval $
       evalExpr cond >>= \case
         VInt _ -> throwError $ TypeMismatch{expected = TBool, actual = TInt}
-        VBool True -> eval s1
-        VBool False -> eval s2
+        VBool True -> eval c1
+        VBool False -> eval c2
 
-  while_ cond s =
+  while_ cond c =
     Eval $
       evalExpr cond >>= \case
         VInt _ -> throwError $ TypeMismatch{expected = TBool, actual = TInt}
-        VBool False -> pure ()
+        VBool False -> return ()
         VBool True -> do
-          eval s
-          eval $ while_ cond s
+          eval c
+          eval $ while_ cond c
 
   n .= e = Eval $ do
     v <- evalExpr e

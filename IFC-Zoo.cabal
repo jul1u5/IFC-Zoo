@@ -29,6 +29,7 @@ library
         Language.While.Abstract.Expr
         Language.While.Abstract.Name
         Language.While.Eval.BigStep
+        Language.While.Eval.SmallStep
         Language.While.Eval.Context
         Language.While.Eval.Expr
         Language.While.Parser

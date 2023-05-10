@@ -4,7 +4,7 @@ module Language.While.Abstract.Command where
 
 import Language.While.Abstract.Name
 
-type family WhileExpr s
+type family WhileExpr c
 
 class While c where
   skip_ :: c

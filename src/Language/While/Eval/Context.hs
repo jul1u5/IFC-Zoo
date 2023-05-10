@@ -14,6 +14,7 @@ import Language.While.Abstract.Name
 data Value
   = VBool Bool
   | VInt Int
+  deriving (Eq)
 
 instance Pretty Value where
   pretty = \case
@@ -21,6 +22,7 @@ instance Pretty Value where
     VInt i -> pretty i
 
 newtype Env = Env {vars :: Map Name Value}
+  deriving (Eq)
 
 instance Pretty Env where
   pretty Env{vars} =
@@ -30,6 +32,7 @@ instance Pretty Env where
       $ vars
 
 data Type = TInt | TBool
+  deriving (Eq)
 
 instance Pretty Type where
   pretty = \case
@@ -39,6 +42,7 @@ instance Pretty Type where
 data EvalError
   = TypeMismatch {expected :: Type, actual :: Type}
   | UndefinedVariable Name
+  deriving (Eq)
 
 instance Pretty EvalError where
   pretty = \case
