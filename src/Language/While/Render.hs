@@ -10,31 +10,31 @@ import Prettyprinter qualified as P
 
 import Language.While.Abstract
 
-data RenderStm = RenderStm {renderStm :: Doc (), isSkip :: Bool}
+data RenderCmd = RenderCmd {renderCmd :: Doc (), isSkip :: Bool}
 
-mkRender :: Doc () -> RenderStm
-mkRender renderStm = RenderStm{renderStm, isSkip = False}
+mkRender :: Doc () -> RenderCmd
+mkRender renderCmd = RenderCmd{renderCmd, isSkip = False}
 
 newtype RenderExpr = RenderExpr {renderExpr :: Doc ()}
 
-type instance WhileExpr RenderStm = RenderExpr
+type instance WhileExpr RenderCmd = RenderExpr
 
-instance While RenderStm where
-  skip_ = RenderStm{renderStm = "skip" <> ";", isSkip = True}
+instance While RenderCmd where
+  skip_ = RenderCmd{renderCmd = "skip" <> ";", isSkip = True}
 
-  semicolon c1 c2 = mkRender $ renderStm c1 <> P.line <> renderStm c2
+  semicolon c1 c2 = mkRender $ renderCmd c1 <> P.line <> renderCmd c2
 
   if_ e (Then c1) (Else c2) =
     mkRender $
       P.sep $
         [ "if" <+> renderExpr e <+> "then"
-        , indent <> renderStm c1
+        , indent <> renderCmd c1
         ]
           <> ( if isSkip c2
                 then []
                 else
                   [ "else"
-                  , indent <> renderStm c2
+                  , indent <> renderCmd c2
                   ]
              )
 
@@ -42,7 +42,7 @@ instance While RenderStm where
     mkRender $
       P.sep
         [ "while" <+> renderExpr e <+> "do"
-        , indent <> renderStm c
+        , indent <> renderCmd c
         , "done"
         ]
 

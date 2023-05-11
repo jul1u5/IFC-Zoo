@@ -30,28 +30,51 @@ library
         Language.While.Abstract.Name
         Language.While.Eval.BigStep
         Language.While.Eval.SmallStep
-        Language.While.Eval.Context
+        Language.While.Eval.Env
         Language.While.Eval.Expr
+        Language.While.Eval.Type
+        Language.While.Eval.Value
         Language.While.Parser
         Language.While.Render
+        Language.While.Examples
+        Language.While.Check.TINI
+        Language.While.Check.TSNI
+        Language.While.Pretty
+        Language.While.Security
+        Language.While.Typed.Command
+        Language.While.Typed.Expr
+        Language.While.Typed.TypeChecker
+        Language.While.Typed.Eq
+        Language.While.Typed
     build-depends:
         bytestring,
         text,
         prettyprinter,
         containers,
         transformers,
-        mtl
+        mtl,
+        plucky
+
+test-suite test
+    import:           common
+    type:             exitcode-stdio-1.0
+    main-is:          Main.hs
+    hs-source-dirs:   test
+    build-depends:
+        IFC-Zoo,
+        containers,
+        tasty,
+        falsify
 
 executable IFC-Zoo
     import:           common
     main-is:          Main.hs
-    other-modules:
-        Examples
     default-extensions:
         NoMonomorphismRestriction
     hs-source-dirs:   app
     build-depends:
         IFC-Zoo,
         bytestring,
+        containers,
         text,
         prettyprinter

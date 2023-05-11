@@ -3,65 +3,67 @@
 module Language.While.Eval.SmallStep where
 
 import Control.Monad.Except
-import Control.Monad.Reader
 import Control.Monad.State.Strict
+import Control.Monad.Trans.Except (except)
 
 import Data.Functor ((<&>))
-import Data.Map.Strict qualified as Map
 
 import Language.While.Abstract.Command
-import Language.While.Eval.Context
+import Language.While.Eval.Env (Env)
+import Language.While.Eval.Env qualified as Env
 import Language.While.Eval.Expr qualified as Expr
+import Language.While.Eval.Type
+import Language.While.Eval.Value
 
-data EvalTransition
-  = Term
-  | NonTerm Eval
+-- data EvalTransition
+--   = Term
+--   | NonTerm Eval
 
-type M = StateT Env (Except EvalError)
+-- type M = StateT Env (Except EvalError)
 
-newtype Eval = Eval {eval :: M EvalTransition}
+-- newtype Eval = Eval {evalCmd :: M EvalTransition}
 
-runEval :: Eval -> Either EvalError Env
-runEval = runEvalWithEnv (Env Map.empty)
+-- eval :: Eval -> Either EvalError Env
+-- eval = evalIn Env.empty
 
-runEvalWithEnv :: Env -> Eval -> Either EvalError Env
-runEvalWithEnv env =
-  runExcept
-    . flip runStateT env
-    . eval
-    >=> \case
-      (Term, env') -> return env'
-      (NonTerm c, env') -> runEvalWithEnv env' c
+-- evalIn :: Env -> Eval -> Either EvalError Env
+-- evalIn env =
+--   runExcept
+--     . flip runStateT env
+--     . evalCmd
+--     >=> \case
+--       (Term, env') -> return env'
+--       (NonTerm c, env') -> evalIn env' c
 
-evalExpr :: Expr.Eval -> M Value
-evalExpr e = do
-  env <- get
-  lift $ runReaderT (Expr.eval e) env
+-- evalExpr :: Expr.Eval -> M Value
+-- evalExpr e = do
+--   env <- get
+--   lift $ except $ Expr.eval env e
 
-type instance WhileExpr Eval = Expr.Eval
+-- type instance WhileExpr Eval = Expr.Eval
 
-instance While Eval where
-  skip_ = Eval $ return Term
-  semicolon c1 c2 =
-    Eval $ do
-      eval c1
-        <&> \case
-          NonTerm c1' -> NonTerm $ c1' `semicolon` c2
-          Term -> NonTerm c2
+-- instance While Eval where
+--   skip_ = Eval $ return Term
 
-  if_ cond (Then c1) (Else c2) = Eval $ do
-    evalExpr cond >>= \case
-      VInt _ -> throwError $ TypeMismatch{expected = TBool, actual = TInt}
-      VBool True -> return $ NonTerm c1
-      VBool False -> return $ NonTerm c2
+--   semicolon c1 c2 =
+--     Eval $
+--       evalCmd c1 <&> \case
+--         NonTerm c1' -> NonTerm $ c1' `semicolon` c2
+--         Term -> NonTerm c2
 
-  while_ cond c = Eval $ do
-    evalExpr cond >>= \case
-      VInt _ -> throwError $ TypeMismatch{expected = TBool, actual = TInt}
-      VBool True -> return $ NonTerm $ c `semicolon` while_ cond c
-      VBool False -> return Term
+--   if_ e (Then c1) (Else c2) =
+--     Eval $
+--       evalExpr e >>= expectBool <&> \case
+--         True -> NonTerm c1
+--         False -> NonTerm c2
 
-  n .= e = Eval $ do
-    v <- evalExpr e
-    modify' $ Env . Map.insert n v . vars
-    return Term
+--   while_ e c =
+--     Eval $
+--       evalExpr e >>= expectBool <&> \case
+--         True -> NonTerm $ c `semicolon` while_ e c
+--         False -> Term
+
+--   x .= e = Eval $ do
+--     v <- evalExpr e
+--     modify' $ Env.update x v
+--     return Term

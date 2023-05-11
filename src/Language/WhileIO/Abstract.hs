@@ -3,8 +3,7 @@
 module Language.WhileIO.Abstract (module Language.While.Abstract, WhileIO (..), Level (..)) where
 
 import Language.While.Abstract
-
-data Level = Low | High
+import Language.While.Security
 
 class WhileIO c where
   in_ :: Level -> Name -> c

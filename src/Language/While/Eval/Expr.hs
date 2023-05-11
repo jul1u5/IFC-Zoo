@@ -1,55 +1,69 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE MonoLocalBinds #-}
+
 module Language.While.Eval.Expr where
 
-import Control.Monad.Except
 import Control.Monad.Reader
 
-import Data.Map qualified as Map
+import Language.While.Eval.Env (Env)
+import Language.While.Eval.Env qualified as Env
+import Language.While.Eval.Type
+import Language.While.Eval.Value
+import Language.While.Typed.Expr
+import Unsafe.Coerce (unsafeCoerce)
 
-import Language.While.Abstract.Expr
-import Language.While.Eval.Context
+data SValue (t :: Type) where
+  SVInt :: Int -> SValue 'TInt
+  SVBool :: Bool -> SValue 'TBool
 
-newtype Eval = Eval {eval :: ReaderT Env (Except EvalError) Value}
+newtype Eval t = Eval {evalExpr :: Reader Env (SValue t)}
+
+eval :: Env -> Eval t -> SValue t
+eval env = flip runReader env . evalExpr
+
+data SomeSValue where
+  SomeSValue :: SValue t -> SomeSValue
+
+toS :: Value -> SomeSValue
+toS (VInt i) = SomeSValue (SVInt i)
+toS (VBool b) = SomeSValue (SVBool b)
 
 instance Expr Eval where
-  bool_ = Eval . return . VBool
-  int_ = Eval . return . VInt
+  bool_ = Eval . return . SVBool
+  int_ = Eval . return . SVInt
 
-  var_ n = Eval $ do
-    env <- asks vars
-    case Map.lookup n env of
-      Nothing -> throwError $ UndefinedVariable n
-      Just v -> return v
+  var_ (Name n) = Eval $ do
+    env <- ask
+    SomeSValue v <- return $ toS $ Env.lookup n env
+    return $ unsafeCoerce v
 
   not_ e = Eval $ do
-    v <- eval e
-    case v of
-      VInt _ -> throwError $ TypeMismatch{expected = TBool, actual = TInt}
-      VBool b -> return $ VBool $ not b
+    evalExpr e >>= \case
+      SVBool b -> return $ SVBool $ not b
 
-  (+.) = intOp (+)
-  (-.) = intOp (-)
-  (*.) = intOp (*)
+  arithOp = \case
+    Plus -> intOp (+)
+    Minus -> intOp (-)
+    Times -> intOp (*)
 
-  (==.) = ordOp (==)
-  (<.) = ordOp (<)
-  (>.) = ordOp (>)
+  relOp = \case
+    Equal -> ordOp (==)
+    LessThan -> ordOp (<)
+    GreaterThan -> ordOp (>)
 
-intOp :: (Int -> Int -> Int) -> Eval -> Eval -> Eval
+intOp :: (Int -> Int -> Int) -> Eval 'TInt -> Eval 'TInt -> Eval 'TInt
 intOp op e1 e2 = Eval $ do
-  v1 <- eval e1 >>= assertInt
-  v2 <- eval e2 >>= assertInt
-  return $ VInt $ op v1 v2
- where
-  assertInt = \case
-    VInt i -> return i
-    VBool _ -> throwError $ TypeMismatch{expected = TInt, actual = TBool}
-
-ordOp :: (forall a. Ord a => a -> a -> Bool) -> Eval -> Eval -> Eval
-ordOp op e1 e2 = Eval $ do
-  v1 <- eval e1
-  v2 <- eval e2
+  v1 <- evalExpr e1
+  v2 <- evalExpr e2
   case (v1, v2) of
-    (VInt _, VBool _) -> throwError $ TypeMismatch{expected = TInt, actual = TBool}
-    (VBool _, VInt _) -> throwError $ TypeMismatch{expected = TBool, actual = TInt}
-    (VInt x, VInt y) -> return $ VBool $ op x y
-    (VBool x, VBool y) -> return $ VBool $ op x y
+    (SVInt i1, SVInt i2) -> return $ SVInt $ op i1 i2
+
+ordOp :: (forall a. Ord a => a -> a -> Bool) -> Eval t -> Eval t -> Eval 'TBool
+ordOp op e1 e2 = Eval $ do
+  v1 <- evalExpr e1
+  v2 <- evalExpr e2
+  case (v1, v2) of
+    (SVInt i1, SVInt i2) -> do
+      return $ SVBool $ op i1 i2
+    (SVBool b1, SVBool b2) -> do
+      return $ SVBool $ op b1 b2

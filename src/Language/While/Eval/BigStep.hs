@@ -2,27 +2,28 @@
 
 module Language.While.Eval.BigStep where
 
-import Data.Map qualified as Map
-
-import Control.Monad.Except
-import Control.Monad.Reader
 import Control.Monad.State.Strict
 
-import Language.While.Abstract
-import Language.While.Eval.Context
+import Language.While.Eval.Env (Env)
+import Language.While.Eval.Env qualified as Env
 import Language.While.Eval.Expr qualified as Expr
+import Language.While.Eval.Value
+import Language.While.Typed
 
-type M = StateT Env (Except EvalError)
+type M = State Env
 
-newtype Eval = Eval {eval :: M ()}
+newtype Eval = Eval {evalCmd :: M ()}
 
-runEval :: Eval -> Either EvalError Env
-runEval = runExcept . flip execStateT (Env Map.empty) . eval
+eval :: Eval -> Env
+eval = evalIn Env.empty
 
-evalExpr :: Expr.Eval -> M Value
+evalIn :: Env -> Eval -> Env
+evalIn env = flip execState env . evalCmd
+
+evalExpr :: Expr.Eval t -> M (Expr.SValue t)
 evalExpr e = do
   env <- get
-  lift $ runReaderT (Expr.eval e) env
+  return $ Expr.eval env e
 
 type instance WhileExpr Eval = Expr.Eval
 
@@ -30,25 +31,28 @@ instance While Eval where
   skip_ = Eval $ return ()
 
   semicolon c1 c2 = Eval $ do
-    eval c1
-    eval c2
+    evalCmd c1
+    evalCmd c2
 
-  if_ cond (Then c1) (Else c2) =
+  if_ e c1 c2 =
     Eval $
-      evalExpr cond >>= \case
-        VInt _ -> throwError $ TypeMismatch{expected = TBool, actual = TInt}
-        VBool True -> eval c1
-        VBool False -> eval c2
+      evalExpr e >>= \case
+        Expr.SVBool True -> evalCmd c1
+        Expr.SVBool False -> evalCmd c2
 
-  while_ cond c =
+  while_ e c =
     Eval $
-      evalExpr cond >>= \case
-        VInt _ -> throwError $ TypeMismatch{expected = TBool, actual = TInt}
-        VBool False -> return ()
-        VBool True -> do
-          eval c
-          eval $ while_ cond c
+      evalExpr e >>= \case
+        Expr.SVBool True -> do
+          evalCmd c
+          evalCmd $ while_ e c
+        Expr.SVBool False -> return ()
 
-  n .= e = Eval $ do
-    v <- evalExpr e
-    modify' $ Env . Map.insert n v . vars
+  ass_ (Name x) e = Eval $ do
+    v <- fromS <$> evalExpr e
+    modify' $ Env.update x v
+
+fromS :: Expr.SValue t -> Value
+fromS = \case
+  Expr.SVBool b -> VBool b
+  Expr.SVInt i -> VInt i
