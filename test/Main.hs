@@ -12,18 +12,15 @@ import Test.Falsify.Range qualified as Range
 import Test.Tasty
 import Test.Tasty.Falsify
 
-import Data.Either (fromRight)
-import Language.While.Abstract
-import Language.While.Check.TINI
-import Language.While.Check.TSNI (tsni)
+import Language.While.Abstract qualified as A
+import Language.While.Eval
 import Language.While.Eval.BigStep qualified as BigStep
-import Language.While.Eval.Env (Env (..))
-import Language.While.Eval.Type
-import Language.While.Eval.Value
+import Language.While.Eval.BigStep qualified as SmallStep
 import Language.While.Examples
 import Language.While.Pretty
-import Language.While.Security
-import Language.While.Typed.TypeChecker (Context (..), typeCheckIn)
+import Language.While.Property
+import Language.While.Secure
+import Language.While.Typed qualified as T
 
 main :: IO ()
 main = do
@@ -32,51 +29,47 @@ main = do
       "IFC-Zoo"
       [ testGroup
           "TINI"
-          [ testProperty "explicit flow" $ prop_TINI explicitFlow
-          , testProperty "implicit flow" $ prop_TINI implicitFlow
+          [ testProperty "explicit flow" $ typeCheckAndRun prop_TINI explicitFlow
+          , testProperty "implicit flow" $ typeCheckAndRun prop_TINI implicitFlow
           ]
       , testGroup
           "TSNI"
-          [ testProperty "non terminating" $ prop_TSNI nonTerminating
+          [ testProperty "non-terminating" $ typeCheckAndRun prop_TSNI nonTerminating
           ]
       ]
 
-prop_TINI :: (forall c. While c => c) -> Property ()
-prop_TINI p = do
+typeCheckAndRun ::
+  T.While c =>
+  (c -> SecurityMap -> Env -> Env -> Property ()) ->
+  (forall a. A.While a => a) ->
+  Property ()
+typeCheckAndRun cont prog = do
   let secMap = Map.fromList [("l", Low), ("h", High)]
   (ctx, env1, env2) <- gen' genEnv
 
-  case typeCheckIn ctx p of
+  case T.typeCheckIn ctx prog of
     Left err -> testFailed $ showPretty err
-    Right typedP -> do
-      case checkSecurity secMap typedP of
-        Left err -> do
-          info $ showPretty err
+    Right (typedProg, typedProg') -> do
+      case checkFlow secMap typedProg of
+        Left _err ->
           return ()
-        Right () -> do
-          let succeeded = tini BigStep.evalIn (fromRight undefined $ typeCheckIn ctx p) secMap env1 env2
-          unless succeeded $ testFailed "TINI violation"
+        Right () ->
+          cont typedProg' secMap env1 env2
 
-prop_TSNI :: (forall c. While c => c) -> Property ()
-prop_TSNI p = do
-  let secMap = Map.fromList [("l", Low), ("h", High)]
-  (ctx, env1, env2) <- gen' genEnv
+prop_TINI :: BigStep.Eval -> SecurityMap -> Env -> Env -> Property ()
+prop_TINI prog secMap env1 env2 = do
+  let succeeded = tini BigStep.evalIn prog secMap env1 env2
+  unless succeeded $ testFailed "TINI violation"
 
-  case typeCheckIn ctx p of
-    Left err -> testFailed $ showPretty err
-    Right typedP -> do
-      case checkSecurity secMap typedP of
-        Left err -> do
-          testFailed $ showPretty err
-        -- return ()
-        Right () -> do
-          let succeeded = tsni BigStep.evalIn (fromRight undefined $ typeCheckIn ctx p) secMap env1 env2
-          unless succeeded $ testFailed "TSNI violation"
+prop_TSNI :: SmallStep.Eval -> SecurityMap -> Env -> Env -> Property ()
+prop_TSNI prog secMap env1 env2 = do
+  let succeeded = tsni SmallStep.evalIn prog secMap env1 env2
+  unless succeeded $ testFailed "TSNI violation"
 
 gen' :: Pretty a => Gen a -> Property' e a
 gen' = genWith (Just . showPretty)
 
-genEnv :: Gen (Context, Env, Env)
+genEnv :: Gen (T.Context, Env, Env)
 genEnv = do
   t_l <- genType
   v_l <- genValue t_l
@@ -86,7 +79,7 @@ genEnv = do
   let lowEnv = Env $ Map.fromList [("l", v_l)]
   let highEnv1 = Env $ Map.fromList [("h", v_h1)]
   let highEnv2 = Env $ Map.fromList [("h", v_h2)]
-  let ctx = Context $ Map.fromList [("l", t_l), ("h", t_h)]
+  let ctx = T.Context $ Map.fromList [("l", t_l), ("h", t_h)]
   return (ctx, lowEnv <> highEnv1, lowEnv <> highEnv2)
 
 genType :: Gen Type

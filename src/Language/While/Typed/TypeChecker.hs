@@ -3,26 +3,34 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
 
-module Language.While.Typed.TypeChecker where
+module Language.While.Typed.TypeChecker (
+  Context (..),
+  typeCheck,
+  typeCheckIn,
+) where
 
 import Control.Monad.Except
 import Control.Monad.State.Strict
+
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Type.Equality ((:~:) (..))
-import Language.While.Abstract qualified as A
-import Language.While.Eval.Type
-import Language.While.Typed qualified as T
-import Language.While.Typed.Eq
+
 import Prettyprinter (Pretty, pretty, (<+>))
 import Prettyprinter qualified as P
+
+import Language.While.Abstract qualified as A
+import Language.While.Eval.Type
+import Language.While.Typed.Command qualified as T
+import Language.While.Typed.Expr qualified as T
+import Language.While.Typed.TypeEquality
 
 newtype Context = Context {context :: Map A.Name Type}
 
 instance Pretty Context where
   pretty Context{context} =
-    P.vsep
-      . map (\(key, value) -> pretty key <+> "|->" <+> pretty value)
+    P.encloseSep P.lbrace P.rbrace P.comma
+      . map (\(key, value) -> pretty key <> ":" <+> pretty value)
       . Map.toList
       $ context
 
@@ -43,8 +51,6 @@ typeCheckIn ctx =
   runExcept . flip evalStateT ctx . typeCheckCmd
 
 type instance A.WhileExpr (TypeCheck c) = TypeCheckExpr (T.WhileExpr c)
-
--- type instance T.WhileExpr (TypeCheck e) =
 
 instance T.While c => A.While (TypeCheck c) where
   skip_ = TypeCheck $ return T.skip_
@@ -76,7 +82,7 @@ instance T.While c => A.While (TypeCheck c) where
     ctx <- get
     case Map.lookup x (context ctx) of
       Nothing -> throwError $ UndefinedVariable x
-      Just (toS -> SomeSType t') -> do
+      Just (toSType -> SomeSType t') -> do
         Refl <- t =?= t'
         return $ T.ass_ (T.Name x) e'
 
@@ -87,7 +93,7 @@ instance T.Expr e => A.Expr (TypeCheckExpr e) where
     ctx <- get
     case Map.lookup x (context ctx) of
       Nothing -> throwError $ UndefinedVariable x
-      Just (toS -> SomeSType t) -> return $ T.var_ (T.Name x) ::: t
+      Just (toSType -> SomeSType t) -> return $ T.var_ (T.Name x) ::: t
 
   not_ e = TypeCheckExpr $ do
     e' ::: t <- typeCheckExpr e
@@ -95,26 +101,29 @@ instance T.Expr e => A.Expr (TypeCheckExpr e) where
       SInt -> throwError $ TypeMismatch{expected = TBool, actual = TInt}
       SBool -> return $ T.not_ e' ::: SBool
 
-  e1 ==. e2 = TypeCheckExpr $ do
-    e1' ::: t1 <- typeCheckExpr e1
-    e2' ::: t2 <- typeCheckExpr e2
-    Refl <- t1 =?= t2
-    return $ T.relOp T.Equal e1' e2' ::: SBool
+  infix_ =
+    TypeCheckExpr .:. \case
+      A.Plus -> checkArithOp T.Plus
+      A.Minus -> checkArithOp T.Minus
+      A.Times -> checkArithOp T.Times
+      A.Equal -> checkRelOp T.Equal
+      A.LessThan -> checkRelOp T.LessThan
+      A.GreaterThan -> checkRelOp T.GreaterThan
 
-data SomeSType where
-  SomeSType :: SType t -> SomeSType
+(.:.) :: (d -> e) -> (a -> b -> c -> d) -> a -> b -> c -> e
+(f .:. g) x y z = f $ g x y z
 
-toS :: Type -> SomeSType
-toS = \case
-  TInt -> SomeSType SInt
-  TBool -> SomeSType SBool
+checkArithOp :: T.Expr e => T.ArithOp -> TypeCheckExpr e -> TypeCheckExpr e -> M (Typed e)
+checkArithOp op e1 e2 = do
+  e1' ::: t <- typeCheckExpr e1
+  e2' ::: t' <- typeCheckExpr e2
+  case (t, t') of
+    (SInt, SInt) -> return $ T.arithOp op e1' e2' ::: SInt
+    (_, _) -> throwError $ TypeMismatch{expected = TInt, actual = TBool}
 
-expectInt :: MonadError TypeCheckError m => Type -> m ()
-expectInt = \case
-  TInt -> return ()
-  TBool -> throwError $ TypeMismatch{expected = TInt, actual = TBool}
-
-expectBool :: MonadError TypeCheckError m => Type -> m ()
-expectBool = \case
-  TBool -> return ()
-  TInt -> throwError $ TypeMismatch{expected = TBool, actual = TInt}
+checkRelOp :: T.Expr e => T.RelOp -> TypeCheckExpr e -> TypeCheckExpr e -> M (Typed e)
+checkRelOp op e1 e2 = do
+  e1' ::: t1 <- typeCheckExpr e1
+  e2' ::: t2 <- typeCheckExpr e2
+  Refl <- t1 =?= t2
+  return $ T.relOp op e1' e2' ::: SBool

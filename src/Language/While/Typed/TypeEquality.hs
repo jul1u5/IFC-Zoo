@@ -1,13 +1,15 @@
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Language.While.Typed.Eq where
+module Language.While.Typed.TypeEquality where
 
 import Control.Monad.Except
+
 import Data.Type.Equality ((:~:) (..))
+
+import Prettyprinter
+
 import Language.While.Abstract qualified as A
 import Language.While.Eval.Type
-import Prettyprinter
 
 data TypeCheckError
   = TypeMismatch {expected :: Type, actual :: Type}

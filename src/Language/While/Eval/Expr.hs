@@ -5,37 +5,24 @@ module Language.While.Eval.Expr where
 
 import Control.Monad.Reader
 
-import Language.While.Eval.Env (Env)
+import Language.While.Eval.Env
 import Language.While.Eval.Env qualified as Env
 import Language.While.Eval.Type
-import Language.While.Eval.Value
 import Language.While.Typed.Expr
-import Unsafe.Coerce (unsafeCoerce)
-
-data SValue (t :: Type) where
-  SVInt :: Int -> SValue 'TInt
-  SVBool :: Bool -> SValue 'TBool
 
 newtype Eval t = Eval {evalExpr :: Reader Env (SValue t)}
 
 eval :: Env -> Eval t -> SValue t
 eval env = flip runReader env . evalExpr
 
-data SomeSValue where
-  SomeSValue :: SValue t -> SomeSValue
-
-toS :: Value -> SomeSValue
-toS (VInt i) = SomeSValue (SVInt i)
-toS (VBool b) = SomeSValue (SVBool b)
-
 instance Expr Eval where
   bool_ = Eval . return . SVBool
   int_ = Eval . return . SVInt
 
-  var_ (Name n) = Eval $ do
+  var_ n = Eval $ do
     env <- ask
-    SomeSValue v <- return $ toS $ Env.lookup n env
-    return $ unsafeCoerce v
+    let v = Env.lookup n env
+    return v
 
   not_ e = Eval $ do
     evalExpr e >>= \case

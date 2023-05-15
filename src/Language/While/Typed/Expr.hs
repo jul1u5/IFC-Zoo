@@ -1,6 +1,9 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Language.While.Typed.Expr where
+
+import Data.Kind qualified as Kind
 
 import Language.While.Abstract qualified as A
 import Language.While.Eval.Type
@@ -31,3 +34,18 @@ data RelOp
   = Equal
   | LessThan
   | GreaterThan
+
+type family WhileExpr c :: Type -> k
+
+data TypedPair a b t where
+  (:*:) :: a t -> b t -> TypedPair a b t
+
+type instance WhileExpr (c, c') = TypedPair (WhileExpr c) (WhileExpr c')
+
+instance (Expr e, Expr e') => Expr (TypedPair e e') where
+  bool_ b = bool_ b :*: bool_ b
+  int_ i = int_ i :*: int_ i
+  var_ x = var_ x :*: var_ x
+  not_ (e :*: e') = not_ e :*: not_ e'
+  arithOp op (e1 :*: e1') (e2 :*: e2') = arithOp op e1 e2 :*: arithOp op e1' e2'
+  relOp op (e1 :*: e1') (e2 :*: e2') = relOp op e1 e2 :*: relOp op e1' e2'

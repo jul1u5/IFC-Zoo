@@ -3,11 +3,7 @@
 
 module Language.While.Eval.Type where
 
-import Prettyprinter (Pretty, pretty, (<+>))
-
-import Control.Monad.Except
-import Language.While.Abstract.Name
-import Language.While.Eval.Value
+import Prettyprinter (Pretty, pretty)
 
 data Type = TInt | TBool
   deriving (Eq, Show)
@@ -21,17 +17,10 @@ instance Pretty Type where
     TInt -> "int"
     TBool -> "bool"
 
--- data EvalError
---   = TypeMismatch {expected :: Type, actual :: Type}
---   | UndefinedVariable Name
---   deriving (Eq)
+data SomeSType where
+  SomeSType :: SType t -> SomeSType
 
--- expectInt :: MonadError EvalError m => Value -> m Int
--- expectInt = \case
---   VInt i -> return i
---   VBool _ -> throwError $ TypeMismatch{expected = TInt, actual = TBool}
-
--- expectBool :: MonadError EvalError m => Value -> m Bool
--- expectBool = \case
---   VBool b -> return b
---   VInt _ -> throwError $ TypeMismatch{expected = TBool, actual = TInt}
+toSType :: Type -> SomeSType
+toSType = \case
+  TInt -> SomeSType SInt
+  TBool -> SomeSType SBool

@@ -8,12 +8,7 @@ class Expr e where
 
   var_ :: Name -> e
 
-  prefix_ :: PrefixOp -> e -> e
-  prefix_ = \case
-    Negate -> not_
-
   not_ :: Expr e => e -> e
-  not_ = prefix_ Negate
 
   infix_ :: InfixOp -> e -> e -> e
   infix_ = \case
@@ -32,8 +27,7 @@ class Expr e where
   (<.) = infix_ LessThan
   (>.) = infix_ GreaterThan
 
-data PrefixOp
-  = Negate
+  {-# MINIMAL bool_, int_, var_, not_, (infix_ | (+.), (-.), (*.), (==.), (<.), (>.)) #-}
 
 data InfixOp
   = Plus

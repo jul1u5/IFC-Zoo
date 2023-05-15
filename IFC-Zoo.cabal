@@ -25,27 +25,33 @@ library
     hs-source-dirs:   src
     exposed-modules:
         Language.While.Abstract
+        Language.While.Eval
+        Language.While.Eval.BigStep
+        Language.While.Eval.SmallStep
+        Language.While.Examples
+        Language.While.Parser
+        Language.While.Pretty
+        Language.While.Property
+        Language.While.Render
+        Language.While.Secure
+        Language.While.Typed
+    other-modules:
         Language.While.Abstract.Command
         Language.While.Abstract.Expr
         Language.While.Abstract.Name
-        Language.While.Eval.BigStep
-        Language.While.Eval.SmallStep
         Language.While.Eval.Env
         Language.While.Eval.Expr
         Language.While.Eval.Type
         Language.While.Eval.Value
-        Language.While.Parser
-        Language.While.Render
-        Language.While.Examples
-        Language.While.Check.TINI
-        Language.While.Check.TSNI
-        Language.While.Pretty
-        Language.While.Security
+        Language.While.Property.Divergence
+        Language.While.Property.TINI
+        Language.While.Property.TSNI
+        Language.While.Secure.Flow
+        Language.While.Secure.Level
         Language.While.Typed.Command
+        Language.While.Typed.TypeEquality
         Language.While.Typed.Expr
         Language.While.Typed.TypeChecker
-        Language.While.Typed.Eq
-        Language.While.Typed
     build-depends:
         bytestring,
         text,
@@ -77,4 +83,6 @@ executable IFC-Zoo
         bytestring,
         containers,
         text,
-        prettyprinter
+        transformers,
+        prettyprinter,
+        either

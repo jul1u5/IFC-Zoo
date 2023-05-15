@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Language.While.Render where
+module Language.While.Render (renderCmd) where
 
 import Data.Bool (bool)
 

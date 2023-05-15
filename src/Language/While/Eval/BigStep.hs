@@ -4,10 +4,9 @@ module Language.While.Eval.BigStep where
 
 import Control.Monad.State.Strict
 
-import Language.While.Eval.Env (Env)
+import Language.While.Eval.Env (Env, SValue (..))
 import Language.While.Eval.Env qualified as Env
 import Language.While.Eval.Expr qualified as Expr
-import Language.While.Eval.Value
 import Language.While.Typed
 
 type M = State Env
@@ -20,7 +19,7 @@ eval = evalIn Env.empty
 evalIn :: Env -> Eval -> Env
 evalIn env = flip execState env . evalCmd
 
-evalExpr :: Expr.Eval t -> M (Expr.SValue t)
+evalExpr :: Expr.Eval t -> M (SValue t)
 evalExpr e = do
   env <- get
   return $ Expr.eval env e
@@ -37,22 +36,17 @@ instance While Eval where
   if_ e c1 c2 =
     Eval $
       evalExpr e >>= \case
-        Expr.SVBool True -> evalCmd c1
-        Expr.SVBool False -> evalCmd c2
+        SVBool True -> evalCmd c1
+        SVBool False -> evalCmd c2
 
   while_ e c =
     Eval $
       evalExpr e >>= \case
-        Expr.SVBool True -> do
+        SVBool True -> do
           evalCmd c
           evalCmd $ while_ e c
-        Expr.SVBool False -> return ()
+        SVBool False -> return ()
 
-  ass_ (Name x) e = Eval $ do
-    v <- fromS <$> evalExpr e
+  ass_ x e = Eval $ do
+    v <- evalExpr e
     modify' $ Env.update x v
-
-fromS :: Expr.SValue t -> Value
-fromS = \case
-  Expr.SVBool b -> VBool b
-  Expr.SVInt i -> VInt i
