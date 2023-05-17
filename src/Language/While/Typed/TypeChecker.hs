@@ -5,6 +5,7 @@
 
 module Language.While.Typed.TypeChecker (
   Context (..),
+  inferContext,
   typeCheck,
   typeCheckIn,
 ) where
@@ -20,12 +21,20 @@ import Prettyprinter (Pretty, pretty, (<+>))
 import Prettyprinter qualified as P
 
 import Language.While.Abstract qualified as A
+import Language.While.Eval (Env (..), Value (..))
 import Language.While.Eval.Type
 import Language.While.Typed.Command qualified as T
 import Language.While.Typed.Expr qualified as T
 import Language.While.Typed.TypeEquality
 
 newtype Context = Context {context :: Map A.Name Type}
+
+inferContext :: Env -> Context
+inferContext (Env vars) = Context $ Map.map inferType vars
+ where
+  inferType = \case
+    VInt _ -> TInt
+    VBool _ -> TBool
 
 instance Pretty Context where
   pretty Context{context} =
@@ -50,9 +59,9 @@ typeCheckIn :: T.While c => Context -> TypeCheck c -> Either TypeCheckError c
 typeCheckIn ctx =
   runExcept . flip evalStateT ctx . typeCheckCmd
 
-type instance A.WhileExpr (TypeCheck c) = TypeCheckExpr (T.WhileExpr c)
-
 instance T.While c => A.While (TypeCheck c) where
+  type WhileExpr (TypeCheck c) = TypeCheckExpr (T.WhileExpr c)
+
   skip_ = TypeCheck $ return T.skip_
 
   semicolon c1 c2 = TypeCheck $ do

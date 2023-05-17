@@ -16,6 +16,10 @@ data EvalTransition
   = Term
   | NonTerm Eval
 
+class EvalTransitionC repr where
+  term :: repr
+  nonTerm :: cont -> repr
+
 type M = State Env
 
 newtype Eval = Eval {evalCmd :: M EvalTransition}
@@ -36,9 +40,9 @@ evalExpr e = do
   env <- get
   return $ Expr.eval env e
 
-type instance WhileExpr Eval = Expr.Eval
-
 instance While Eval where
+  type WhileExpr Eval = Expr.Eval
+
   skip_ = Eval $ return Term
 
   semicolon c1 c2 =

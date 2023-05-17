@@ -3,8 +3,6 @@
 
 module Main where
 
-import Control.Monad (unless)
-
 import Data.Map.Strict qualified as Map
 
 import Test.Falsify.Generator qualified as Gen
@@ -45,42 +43,43 @@ typeCheckAndRun ::
   Property ()
 typeCheckAndRun cont prog = do
   let secMap = Map.fromList [("l", Low), ("h", High)]
-  (ctx, env1, env2) <- gen' genEnv
+      ctx = T.Context $ Map.fromList [("l", TBool), ("h", TBool)]
+  (env1, env2) <- gen' genEnv
 
   case T.typeCheckIn ctx prog of
     Left err -> testFailed $ showPretty err
     Right (typedProg, typedProg') -> do
-      case checkFlow secMap typedProg of
+      case checkFlow secMap typedProg' of
         Left _err ->
           return ()
         Right () ->
-          cont typedProg' secMap env1 env2
+          cont typedProg secMap env1 env2
 
 prop_TINI :: BigStep.Eval -> SecurityMap -> Env -> Env -> Property ()
-prop_TINI prog secMap env1 env2 = do
-  let succeeded = tini BigStep.evalIn prog secMap env1 env2
-  unless succeeded $ testFailed "TINI violation"
+prop_TINI prog secMap env1 env2 =
+  maybeFail $ tini BigStep.evalIn prog secMap env1 env2
 
 prop_TSNI :: SmallStep.Eval -> SecurityMap -> Env -> Env -> Property ()
-prop_TSNI prog secMap env1 env2 = do
-  let succeeded = tsni SmallStep.evalIn prog secMap env1 env2
-  unless succeeded $ testFailed "TSNI violation"
+prop_TSNI prog secMap env1 env2 =
+  maybeFail $ tsni SmallStep.evalIn prog secMap env1 env2
+
+maybeFail :: Show a => Maybe a -> Property' String ()
+maybeFail = maybe (return ()) (testFailed . show)
 
 gen' :: Pretty a => Gen a -> Property' e a
 gen' = genWith (Just . showPretty)
 
-genEnv :: Gen (T.Context, Env, Env)
+genEnv :: Gen (Env, Env)
 genEnv = do
-  t_l <- genType
-  v_l <- genValue t_l
-  t_h <- genType
-  v_h1 <- genValue t_h
-  v_h2 <- genValue t_h
+  -- t_l <- genType
+  v_l <- genValue TBool
+  -- t_h <- genType
+  v_h1 <- genValue TBool
+  v_h2 <- genValue TBool
   let lowEnv = Env $ Map.fromList [("l", v_l)]
   let highEnv1 = Env $ Map.fromList [("h", v_h1)]
   let highEnv2 = Env $ Map.fromList [("h", v_h2)]
-  let ctx = T.Context $ Map.fromList [("l", t_l), ("h", t_h)]
-  return (ctx, lowEnv <> highEnv1, lowEnv <> highEnv2)
+  return (lowEnv <> highEnv1, lowEnv <> highEnv2)
 
 genType :: Gen Type
 genType = pure TBool -- Gen.choose (pure TBool) (pure TInt)

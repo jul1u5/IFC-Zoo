@@ -2,7 +2,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Language.While.Secure.Flow where
+module Language.While.Secure.Flow (checkFlow) where
 
 import Control.Monad.Except
 import Control.Monad.Reader
@@ -34,7 +34,7 @@ instance Pretty SecError where
         <+> "to"
         <+> pretty varLevel
         <+> "variable"
-        <+> P.parens (pretty varName)
+        <+> P.enclose "\"" "\"" (pretty varName)
         <+> "violates security policy"
 
 data SecContext = SecContext
@@ -60,14 +60,14 @@ newtype SecFlowExpr t = SecFlowExpr
   { secCheckExpr :: MExpr Level
   }
 
-type instance WhileExpr SecFlow = SecFlowExpr
-
 checkExpr :: WhileExpr SecFlow t -> M Level
 checkExpr e = do
   secMap <- asks secMap
   lift $ runReaderT (secCheckExpr e) secMap
 
 instance While SecFlow where
+  type WhileExpr SecFlow = SecFlowExpr
+
   skip_ = SecFlow $ return ()
 
   semicolon c1 c2 = SecFlow $ secCheck c1 >> secCheck c2
@@ -102,7 +102,7 @@ lookupLevel ::
   ) =>
   Name t ->
   m Level
-lookupLevel (Name x) = asks $ fromJust . Map.lookup x
+lookupLevel (Name x) = asks $ fromJust . Map.lookup x . getSecMap
 
 lookupLevel' ::
   ( HasCallStack

@@ -13,7 +13,8 @@ import Prettyprinter qualified as P
 import Language.While.Abstract qualified as A
 import Language.While.Eval.Type
 import Language.While.Eval.Value
-import Language.While.Typed
+
+import Language.While.Typed.Expr
 import Unsafe.Coerce (unsafeCoerce)
 
 newtype Env = Env {vars :: Map A.Name Value}

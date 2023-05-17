@@ -5,9 +5,9 @@ module Language.While.Abstract.Command where
 import Language.While.Abstract.Expr
 import Language.While.Abstract.Name
 
-type family WhileExpr c
+class (Expr (WhileExpr c)) => While c where
+  type WhileExpr c
 
-class Expr (WhileExpr c) => While c where
   skip_ :: c
   semicolon :: c -> c -> c
   if_ :: WhileExpr c -> Then c -> Else c -> c

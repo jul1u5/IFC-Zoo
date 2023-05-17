@@ -3,7 +3,7 @@
 module Language.WhileIO.Abstract (module Language.While.Abstract, WhileIO (..), Level (..)) where
 
 import Language.While.Abstract
-import Language.While.Security
+import Language.While.Secure
 
 class WhileIO c where
   in_ :: Level -> Name -> c

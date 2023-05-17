@@ -44,6 +44,7 @@ library
         Language.While.Eval.Type
         Language.While.Eval.Value
         Language.While.Property.Divergence
+        Language.While.Property.LowEq
         Language.While.Property.TINI
         Language.While.Property.TSNI
         Language.While.Secure.Flow
@@ -75,9 +76,9 @@ test-suite test
 executable IFC-Zoo
     import:           common
     main-is:          Main.hs
-    default-extensions:
-        NoMonomorphismRestriction
     hs-source-dirs:   app
+    other-modules:
+        Demo
     build-depends:
         IFC-Zoo,
         bytestring,
@@ -86,3 +87,5 @@ executable IFC-Zoo
         transformers,
         prettyprinter,
         either
+    default-extensions:
+        NoMonomorphismRestriction

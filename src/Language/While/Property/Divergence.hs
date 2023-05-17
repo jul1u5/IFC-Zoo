@@ -7,7 +7,6 @@ import Language.While.Eval.Env
 
 runOrDiverge :: (Env -> c -> Env) -> Env -> c -> Maybe Env
 runOrDiverge evalIn env c = do
-  checkDivergence $ evalIn env c
+  unsafePerformIO $ timeout microseconds $ pure $! evalIn env c
  where
-  checkDivergence x = unsafePerformIO $ timeout microseconds $ pure $! x
   microseconds = 1_000

@@ -1,13 +1,16 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module Language.While.Property.TINI where
 
-import Data.Maybe (fromMaybe)
-
+import Data.Functor ((<&>))
 import Language.While.Eval.Env
 import Language.While.Property.Divergence
+import Language.While.Property.LowEq
 import Language.While.Secure.Level
 import Language.While.Typed
+import Prettyprinter (Doc, pretty, (<+>))
+import Prettyprinter qualified as P
 
 tini ::
   While c =>
@@ -16,13 +19,45 @@ tini ::
   SecurityMap ->
   Env ->
   Env ->
-  Bool
+  Maybe (Doc ())
 tini evalIn c secMap env1 env2 = do
-  let env1' = runOrDiverge evalIn env1 c
-  let env2' = runOrDiverge evalIn env2 c
-  checkTI secMap env1' env2'
-
-checkTI :: SecurityMap -> Maybe Env -> Maybe Env -> Bool
-checkTI secMap env1 env2 =
-  fromMaybe True $
-    checkLowEqEnv secMap <$> env1 <*> env2
+  env1' <- runOrDiverge evalIn env1 c
+  env2' <- runOrDiverge evalIn env2 c
+  checkLowEqEnv secMap env1' env2' <&> \err ->
+    P.vsep
+      [ "Execution in initially low-equivalent environments:"
+      , ""
+      , P.indent 2 $
+          "env11"
+            <+> "="
+            <+> pretty env1
+              <> P.line
+              <> "env12"
+            <+> "="
+            <+> pretty env2
+      , ""
+      , "resulted in low-inequivalent environments:"
+      , ""
+      , P.indent 2 $ "env21" <+> "=" <+> err <+> "=" <+> "env22"
+      , ""
+      , "Evaluation:"
+      , ""
+      , P.indent 2 $
+          "<" <> "c" <> ","
+            <+> "env11"
+            <+> "="
+            <+> pretty env1 <> ">"
+            <+> "=>"
+              <> P.line
+              <> P.indent 4 ("env21" <+> "=" <+> P.pretty env1')
+      , ""
+      , P.indent 2 $
+          "<" <> "c" <> ","
+            <+> "env12"
+            <+> "="
+            <+> pretty env2 <> ">"
+            <+> "=>"
+              <> P.line
+              <> P.indent 4 ("env22" <+> "=" <+> P.pretty env2')
+      , ""
+      ]

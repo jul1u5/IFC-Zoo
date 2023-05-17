@@ -24,9 +24,9 @@ evalExpr e = do
   env <- get
   return $ Expr.eval env e
 
-type instance WhileExpr Eval = Expr.Eval
-
 instance While Eval where
+  type WhileExpr Eval = Expr.Eval
+
   skip_ = Eval $ return ()
 
   semicolon c1 c2 = Eval $ do

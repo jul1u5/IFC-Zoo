@@ -17,9 +17,9 @@ mkRender renderCmd = RenderCmd{renderCmd, isSkip = False}
 
 newtype RenderExpr = RenderExpr {renderExpr :: Doc ()}
 
-type instance WhileExpr RenderCmd = RenderExpr
-
 instance While RenderCmd where
+  type WhileExpr RenderCmd = RenderExpr
+
   skip_ = RenderCmd{renderCmd = "skip" <> ";", isSkip = True}
 
   semicolon c1 c2 = mkRender $ renderCmd c1 <> P.line <> renderCmd c2

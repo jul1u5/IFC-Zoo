@@ -16,12 +16,12 @@
       pkgs-haskell = import inputs.nixpkgs-haskell {inherit system;};
     in {
       devShells.default = pkgs.mkShell {
-        buildInputs = with pkgs-haskell.haskell.packages.ghc944; [
+        buildInputs = (with pkgs-haskell.haskell.packages.ghc944; [
           cabal-install
           ghc
           haskell-language-server
           hp2pretty
-        ];
+        ]) ++ (with pkgs; [ ghcid ]);
       };
     });
 }
