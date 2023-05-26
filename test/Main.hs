@@ -42,7 +42,7 @@ typeCheckAndRun ::
   (forall a. A.While a => a) ->
   Property ()
 typeCheckAndRun cont prog = do
-  let secMap = Map.fromList [("l", Low), ("h", High)]
+  let secMap = SecMap $ Map.fromList [("l", Low), ("h", High)]
       ctx = T.Context $ Map.fromList [("l", TBool), ("h", TBool)]
   (env1, env2) <- gen' genEnv
 
